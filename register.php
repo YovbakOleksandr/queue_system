@@ -1,0 +1,206 @@
+<?php
+session_start();
+include "db.php";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $last_name = trim($_POST["last_name"]);
+    $first_name = trim($_POST["first_name"]);
+    $patronymic = trim($_POST["patronymic"]);
+    $full_name = $last_name . " " . $first_name . " " . $patronymic;
+    $email = trim($_POST["email"]);
+    $password = trim($_POST["password"]);
+    $confirm_password = trim($_POST["confirm_password"]);
+    $security_question = trim($_POST["security_question"]);
+    $security_answer = trim($_POST["security_answer"]);
+    
+    // Валідація форми
+    $errors = [];
+    
+    // Перевірка ПІБ
+    if (empty($last_name) || empty($first_name) || empty($patronymic)) {
+        $errors[] = "Усі поля ПІБ мають бути заповнені";
+    }
+    
+    // Перевірка email
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Некоректний формат email";
+    }
+    
+    // Перевірка наявності користувача з таким email
+    $check_stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $check_stmt->bind_param("s", $email);
+    $check_stmt->execute();
+    $check_stmt->store_result();
+    if ($check_stmt->num_rows > 0) {
+        $errors[] = "Користувач з таким email вже існує";
+    }
+    $check_stmt->close();
+    
+    // Перевірка пароля
+    if (strlen($password) < 8) {
+        $errors[] = "Пароль має бути не менше 8 символів";
+    }
+    
+    if (!preg_match('/[A-Z]/', $password)) {
+        $errors[] = "Пароль має містити хоча б одну велику літеру";
+    }
+    
+    if (!preg_match('/[a-z]/', $password)) {
+        $errors[] = "Пароль має містити хоча б одну малу літеру";
+    }
+    
+    if (!preg_match('/[0-9]/', $password)) {
+        $errors[] = "Пароль має містити хоча б одну цифру";
+    }
+    
+    // Перевірка підтвердження пароля
+    if ($password !== $confirm_password) {
+        $errors[] = "Паролі не співпадають";
+    }
+    
+    // Перевірка секретного запитання та відповіді
+    if (empty($security_question)) {
+        $errors[] = "Виберіть секретне запитання";
+    }
+    
+    if (strlen($security_answer) < 2) {
+        $errors[] = "Відповідь на секретне запитання занадто коротка";
+    }
+    
+    if (empty($errors)) {
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        $hashed_answer = password_hash(strtolower($security_answer), PASSWORD_DEFAULT);
+        
+        // Перевіряємо наявність колонок для секретного запитання
+        $check_columns = $conn->query("SHOW COLUMNS FROM users LIKE 'security_question'");
+        if ($check_columns->num_rows == 0) {
+            // Додаємо нові колонки, якщо їх немає
+            $conn->query("ALTER TABLE users ADD security_question VARCHAR(255) AFTER password");
+            $conn->query("ALTER TABLE users ADD security_answer VARCHAR(255) AFTER security_question");
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, security_question, security_answer) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssss", $full_name, $email, $hashed_password, $security_question, $hashed_answer);
+        
+        if ($stmt->execute()) {
+            $_SESSION["success"] = "Реєстрація успішна! Тепер увійдіть.";
+            header("Location: login.php");
+            exit();
+        } else {
+            $_SESSION["error"] = "Помилка реєстрації: " . $conn->error;
+        }
+        $stmt->close();
+    } else {
+        $_SESSION["error"] = implode("<br>", $errors);
+    }
+    $conn->close();
+}
+
+// Масив секретних запитань
+$security_questions = [
+    "Ваше перше домашнє тварина?",
+    "Дівоче прізвище матері?",
+    "Назва міста, де ви народилися?",
+    "Ім'я вашого найкращого друга дитинства?",
+    "Назва вашої першої школи?",
+    "Ваш улюблений фільм?",
+    "Марка вашого першого автомобіля?"
+];
+?>
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Реєстрація</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 500px;
+            margin-top: 50px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .password-requirements {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center mb-4">Реєстрація</h2>
+        <?php if (isset($_SESSION["error"])) { echo "<div class='alert alert-danger'>" . $_SESSION["error"] . "</div>"; unset($_SESSION["error"]); } ?>
+        <?php if (isset($_SESSION["success"])) { echo "<div class='alert alert-success'>" . $_SESSION["success"] . "</div>"; unset($_SESSION["success"]); } ?>
+        
+        <form action="" method="post">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="last_name">Прізвище:</label>
+                    <input type="text" name="last_name" class="form-control" placeholder="Прізвище" required value="<?php echo isset($_POST['last_name']) ? htmlspecialchars($_POST['last_name']) : ''; ?>">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="first_name">Ім'я:</label>
+                    <input type="text" name="first_name" class="form-control" placeholder="Ім'я" required value="<?php echo isset($_POST['first_name']) ? htmlspecialchars($_POST['first_name']) : ''; ?>">
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="patronymic">По батькові:</label>
+                    <input type="text" name="patronymic" class="form-control" placeholder="По батькові" required value="<?php echo isset($_POST['patronymic']) ? htmlspecialchars($_POST['patronymic']) : ''; ?>">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" name="email" class="form-control" placeholder="Введіть ваш email" required value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Пароль:</label>
+                <input type="password" name="password" class="form-control" placeholder="Введіть пароль" required>
+                <div class="password-requirements">
+                    Пароль повинен містити:
+                    <ul>
+                        <li>Мінімум 8 символів</li>
+                        <li>Хоча б одну велику літеру</li>
+                        <li>Хоча б одну малу літеру</li>
+                        <li>Хоча б одну цифру</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Підтвердження пароля:</label>
+                <input type="password" name="confirm_password" class="form-control" placeholder="Підтвердіть пароль" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="security_question">Секретне запитання:</label>
+                <select name="security_question" class="form-control" required>
+                    <option value="">Виберіть запитання...</option>
+                    <?php foreach ($security_questions as $question): ?>
+                        <option value="<?php echo htmlspecialchars($question); ?>" <?php echo (isset($_POST['security_question']) && $_POST['security_question'] == $question) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($question); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="form-text text-muted">Це запитання буде використано для відновлення пароля</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="security_answer">Відповідь на секретне запитання:</label>
+                <input type="text" name="security_answer" class="form-control" placeholder="Введіть відповідь" required value="<?php echo isset($_POST['security_answer']) ? htmlspecialchars($_POST['security_answer']) : ''; ?>">
+                <small class="form-text text-muted">Запам'ятайте цю відповідь, вона буде потрібна для відновлення пароля</small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Зареєструватися</button>
+        </form>
+        
+        <p class="text-center mt-3">Вже маєте акаунт? <a href="login.php">Увійти</a></p>
+    </div>
+</body>
+</html>
