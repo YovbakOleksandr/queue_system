@@ -168,7 +168,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
         // Активація вкладки для адмін-панелі (якщо є)
         $(document).ready(function() {
             var activeTab = '<?php echo $active_tab; ?>';
-            $('#adminTabs a[href="#' + activeTab + '"]').tab('show');
+            // Corrected selector for Bootstrap 4 tabs
+            $('#adminTabs a[href="#' + activeTab + '-tab"]').tab('show');
         });
     </script>
 </body>
