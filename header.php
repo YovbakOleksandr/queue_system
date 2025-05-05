@@ -1,23 +1,23 @@
 <?php
-// Перевірка, чи вже запущена сесія
+/* Перевірка стану сесії */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Перевірка, чи підключено файл з базою даних
+/* Перевірка підключення до бази даних */
 if (!function_exists('mysqli_init') || !is_file('db.php')) {
     include_once "db.php";
 }
 
-// Отримання поточної дати та часу
+/* Налаштування часової зони та отримання дати */
 date_default_timezone_set('Europe/Kyiv');
 $current_date = date("d.m.Y");
 $current_time = date("H:i:s");
 
-// Визначення поточної сторінки для активації відповідного пункту меню
+/* Визначення поточної сторінки */
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// Встановлення заголовка сторінки (можна перевизначити перед підключенням header.php)
+/* Встановлення заголовка сторінки */
 if (!isset($page_title)) {
     $page_title = "Система управління чергою";
 }
@@ -135,12 +135,10 @@ if (!isset($page_title)) {
             }
         }
     </style>
-    <!-- Додаткові стилі можна додавати тут -->
     <?php if (isset($additional_styles)) echo $additional_styles; ?>
 </head>
 <body>
     <div class="container mt-4">
-        <!-- Шапка -->
         <div class="header">
             <div class="header-title">
                 <?php if (isset($_SESSION["user_id"])): ?>
@@ -162,7 +160,6 @@ if (!isset($page_title)) {
             </div>
         </div>
 
-        <!-- Повідомлення -->
         <?php if (isset($_SESSION["success"])): ?>
             <div class="success-msg"><?= $_SESSION["success"] ?></div>
             <?php unset($_SESSION["success"]); ?>

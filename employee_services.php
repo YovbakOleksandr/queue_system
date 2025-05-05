@@ -1,4 +1,5 @@
 <?php
+/* Перевірка сесії та прав доступу */
 session_start();
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != 'employee') {
     header("Location: login.php");
@@ -7,7 +8,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != 'employee') {
 
 include "db.php";
 
-// Отримання списку послуг, які працівник може обробляти
+/* Отримання списку послуг працівника */
 $employee_id = $_SESSION["user_id"];
 $services = [];
 $sql = "SELECT es.id, s.name, es.is_active 
@@ -21,7 +22,7 @@ if ($result->num_rows > 0) {
     }
 }
 
-// Оновлення активних послуг
+/* Оновлення активних послуг */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_services"])) {
     foreach ($services as $service) {
         $is_active = isset($_POST["service_" . $service['id']]) ? 1 : 0;

@@ -1,4 +1,5 @@
 <?php
+/* Перевірка сесії та прав доступу */
 session_start();
 if (!isset($_SESSION["user_id"])) {
     exit();
@@ -6,7 +7,7 @@ if (!isset($_SESSION["user_id"])) {
 
 include "db.php";
 
-// Отримання записів користувача
+/* Отримання записів користувача */
 $user_queue = [];
 $sql = "SELECT q.*, s.name as service_name FROM queue q JOIN services s ON q.service_id = s.id WHERE q.user_id = " . $_SESSION["user_id"];
 $result = $conn->query($sql);
@@ -16,11 +17,7 @@ if ($result->num_rows > 0) {
     }
 }
 
-// Сортування талонів за пріоритетом:
-// 1. Викликані (is_called = 1, is_confirmed = 0)
-// 2. Очікують (status = 'pending')
-// 3. Завершені або скасовані (status = 'completed' або 'cancelled')
-// У межах кожної групи сортування за датою та часом від більшої до меншої
+/* Сортування талонів за пріоритетом */
 usort($user_queue, function($a, $b) {
     // Визначення пріоритету для кожного запису
     $getPriority = function($item) {
@@ -41,16 +38,18 @@ usort($user_queue, function($a, $b) {
         return $priorityA - $priorityB;
     }
     
-    // Якщо пріоритети однакові, сортуємо за датою та часом від більшої до меншої
+    // Якщо пріоритети однакові, сортуємо за датою та часом
     $timeA = strtotime($a['appointment_date'] . ' ' . $a['appointment_time']);
     $timeB = strtotime($b['appointment_date'] . ' ' . $b['appointment_time']);
     
-    return $timeB - $timeA; // Від більшої до меншої
+    return $timeB - $timeA;
 });
 
+/* Відображення записів */
 if (!empty($user_queue)) {
     echo '<ul class="service-list">';
     foreach ($user_queue as $item) {
+        /* Визначення статусу запису */
         $status_class = '';
         $status_icon = '';
         $status_text = '';
@@ -68,7 +67,7 @@ if (!empty($user_queue)) {
             $status_icon = 'user-clock';
             $status_text = 'Обслуговується';
         } elseif ($item['is_called'] == 1) {
-            $status_class = 'text-info'; // Синій колір для викликаних талонів
+            $status_class = 'text-info';
             $status_icon = 'bell';
             $status_text = 'Викликано';
         } else {
@@ -77,10 +76,11 @@ if (!empty($user_queue)) {
             $status_text = 'Очікує';
         }
         
+        /* Формування HTML для запису */
         echo '<li>';
         echo '<div class="row align-items-center">';
         
-        // Ліва частина - інформація про запис
+        // Інформація про запис
         echo '<div class="col-md-9">';
         echo '<h5 class="mb-1"><i class="fas fa-ticket-alt mr-2"></i>Номер талону: <strong>' . $item['ticket_number'] . '</strong></h5>';
         echo '<div class="row mt-3">';
@@ -100,11 +100,10 @@ if (!empty($user_queue)) {
         
         echo '<p class="mt-2"><i class="fas fa-info-circle mr-2"></i>Статус: ';
         echo '<span class="' . $status_class . '"><i class="fas fa-' . $status_icon . ' mr-1"></i>' . $status_text . '</span>';
-        
         echo '</p>';
         echo '</div>';
         
-        // Права частина - кнопки дій
+        // Кнопки дій
         echo '<div class="col-md-3 text-right">';
         if ($item['status'] == 'pending') {
             echo '<a href="cancel.php?ticket_number=' . $item['ticket_number'] . '" class="btn btn-outline-danger"><i class="fas fa-times mr-1"></i>Скасувати</a>';

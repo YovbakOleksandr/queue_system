@@ -1,4 +1,5 @@
 <?php
+/* Перевірка сесії та прав доступу */
 session_start();
 if (!isset($_SESSION["user_id"])) {
     exit();
@@ -8,7 +9,7 @@ include "db.php";
 
 $user_id = $_SESSION["user_id"];
 
-// Перевірка, чи клієнта викликали (тільки активні, не скасовані та не завершені)
+/* Перевірка, чи клієнта викликали (тільки активні, не скасовані та не завершені) */
 $sql = "SELECT q.ticket_number, q.workstation, q.called_at, s.wait_time 
         FROM queue q 
         JOIN services s ON q.service_id = s.id 

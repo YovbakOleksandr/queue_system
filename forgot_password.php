@@ -2,6 +2,7 @@
 session_start();
 include "db.php";
 
+/* Ініціалізація змінних */
 $show_question_form = false;
 $show_answer_form = false;
 $show_password_form = false;
@@ -9,11 +10,10 @@ $user_email = "";
 $security_question = "";
 $user_id = 0;
 
-// Крок 1: Користувач вводить email
+/* Крок 1: Перевірка email */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["email"]) && !isset($_POST["security_answer"]) && !isset($_POST["new_password"])) {
     $email = trim($_POST["email"]);
     
-    // Перевіряємо, чи існує користувач з таким email
     $stmt = $conn->prepare("SELECT id, full_name, security_question FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -39,13 +39,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["email"]) && !isset($_P
     $stmt->close();
 }
 
-// Крок 2: Користувач вводить відповідь на секретне запитання
+/* Крок 2: Перевірка відповіді */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["security_answer"]) && !isset($_POST["new_password"])) {
     $security_answer = strtolower(trim($_POST["security_answer"]));
     $email = $_SESSION["reset_email"];
     $user_id = $_SESSION["reset_user_id"];
     
-    // Отримуємо хешовану відповідь з бази даних
     $stmt = $conn->prepare("SELECT security_answer, security_question FROM users WHERE id = ? AND email = ?");
     $stmt->bind_param("is", $user_id, $email);
     $stmt->execute();
@@ -68,14 +67,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["security_answer"]) && 
     $stmt->close();
 }
 
-// Крок 3: Користувач вводить новий пароль
+/* Крок 3: Зміна пароля */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
     $new_password = trim($_POST["new_password"]);
     $confirm_password = trim($_POST["confirm_password"]);
     $user_id = $_SESSION["reset_user_id"];
     $email = $_SESSION["reset_email"];
     
-    // Валідація пароля
+    /* Валідація пароля */
     $errors = [];
     
     if (strlen($new_password) < 8) {
@@ -99,7 +98,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
     }
     
     if (empty($errors)) {
-        // Оновлюємо пароль користувача
         $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
         $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ? AND email = ?");
         $stmt->bind_param("sis", $hashed_password, $user_id, $email);
@@ -107,7 +105,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
         if ($stmt->execute()) {
             $_SESSION["success"] = "Ваш пароль успішно оновлено. Тепер ви можете увійти з новим паролем.";
             
-            // Очищаємо сесійні змінні для скидання пароля
             unset($_SESSION["reset_email"]);
             unset($_SESSION["reset_user_id"]);
             
@@ -123,7 +120,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
         $show_password_form = true;
     }
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -158,7 +154,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
         <?php if (isset($_SESSION["success"])) { echo "<div class='alert alert-success'>" . $_SESSION["success"] . "</div>"; unset($_SESSION["success"]); } ?>
         
         <?php if (!$show_question_form && !$show_password_form): ?>
-            <!-- Крок 1: Форма для введення email -->
             <div class="card">
                 <div class="card-header">
                     Крок 1: Введіть вашу електронну пошту
@@ -176,7 +171,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
         <?php endif; ?>
         
         <?php if ($show_question_form && !$show_password_form): ?>
-            <!-- Крок 2: Форма для відповіді на секретне запитання -->
             <div class="card">
                 <div class="card-header">
                     Крок 2: Дайте відповідь на секретне запитання
@@ -197,7 +191,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["new_password"])) {
         <?php endif; ?>
         
         <?php if ($show_password_form): ?>
-            <!-- Крок 3: Форма для введення нового пароля -->
             <div class="card">
                 <div class="card-header">
                     Крок 3: Створіть новий пароль

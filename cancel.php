@@ -1,4 +1,5 @@
 <?php
+/* Перевірка сесії та прав доступу */
 session_start();
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
@@ -9,7 +10,7 @@ include "db.php";
 
 $ticket_number = $_GET["ticket_number"];
 
-// Перевірка статусу талону
+/* Перевірка статусу талону */
 $stmt = $conn->prepare("SELECT status FROM queue WHERE ticket_number = ? AND user_id = ?");
 $stmt->bind_param("si", $ticket_number, $_SESSION["user_id"]);
 $stmt->execute();
@@ -20,7 +21,7 @@ if ($result->num_rows > 0) {
     $status = $row["status"];
     
     if ($status == 'pending') {
-        // Скасування активного талону
+        /* Скасування активного талону */
         $stmt = $conn->prepare("UPDATE queue SET status = 'cancelled', is_called = 0, is_confirmed = 0 WHERE ticket_number = ? AND user_id = ?");
         $stmt->bind_param("si", $ticket_number, $_SESSION["user_id"]);
         if ($stmt->execute()) {
@@ -29,7 +30,7 @@ if ($result->num_rows > 0) {
             $_SESSION["error"] = "Помилка скасування запису!";
         }
     } elseif ($status == 'completed' || $status == 'cancelled') {
-        // Видалення завершеного або скасованого талону
+        /* Видалення завершеного або скасованого талону */
         $stmt = $conn->prepare("DELETE FROM queue WHERE ticket_number = ? AND user_id = ?");
         $stmt->bind_param("si", $ticket_number, $_SESSION["user_id"]);
         if ($stmt->execute()) {

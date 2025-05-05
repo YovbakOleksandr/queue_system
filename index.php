@@ -1,25 +1,44 @@
 <?php
+// --- Ініціалізація сесії та підключення до БД ---
 session_start();
-
-// Перевірка, чи користувач увійшов у систему
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
     exit();
 }
-
-// Підключення до бази даних
 include "db.php";
-
-// Отримання ролі користувача з сесії
 $role = $_SESSION["role"];
-
-// Отримання поточної дати та часу
 date_default_timezone_set('Europe/Kyiv');
 $current_date = date("d.m.Y");
 $current_time = date("H:i:s");
-
-// Отримання активної вкладки з параметра URL (якщо є)
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
+
+// --- Обробка POST-запитів для працівника ---
+if ($role === 'employee' && $_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST["update_workstation"])) {
+        $workstation = trim($_POST["workstation"]);
+        $stmt = $conn->prepare("UPDATE users SET workstation = ? WHERE id = ?");
+        $stmt->bind_param("si", $workstation, $_SESSION["user_id"]);
+        $stmt->execute();
+        $stmt->close();
+        $_SESSION["workstation"] = $workstation;
+        $_SESSION["success"] = "Робочу станцію оновлено!";
+        header("Location: index.php?tab=settings");
+        exit();
+    }
+    if (isset($_POST["update_filter"])) {
+        $selected_services = $_POST["services"] ?? [];
+        $_SESSION["selected_services"] = $selected_services;
+        $_SESSION["success"] = "Фільтр послуг оновлено!";
+        header("Location: index.php?tab=settings");
+        exit();
+    }
+    if (isset($_POST["update_auto_call"])) {
+        $_SESSION["auto_call_next"] = isset($_POST["auto_call_next"]) ? true : false;
+        $_SESSION["success"] = "Налаштування оновлено!";
+        header("Location: index.php?tab=settings");
+        exit();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -138,11 +157,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
                 <a href="logout.php" class="btn btn-danger"><i class="fas fa-sign-out-alt mr-2"></i>Вийти</a>
             </div>
         </div>
-
         <!-- Повідомлення -->
         <?php if (isset($_SESSION["success"])) { echo "<p class='success-msg'>" . $_SESSION["success"] . "</p>"; unset($_SESSION["success"]); } ?>
         <?php if (isset($_SESSION["error"])) { echo "<p class='error-msg'>" . $_SESSION["error"] . "</p>"; unset($_SESSION["error"]); } ?>
-
         <!-- Основний вміст -->
         <?php if ($role === 'admin'): ?>
             <h3>Панель адміністратора</h3>
@@ -154,7 +171,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
             <?php include 'user_panel.php'; ?>
         <?php endif; ?>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
@@ -164,12 +180,14 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'services';
             document.getElementById("current-time").textContent = now.toLocaleTimeString();
         }
         setInterval(updateClock, 1000);
-
-        // Активація вкладки для адмін-панелі (якщо є)
+        // Активація вкладки
         $(document).ready(function() {
             var activeTab = '<?php echo $active_tab; ?>';
-            // Corrected selector for Bootstrap 4 tabs
-            $('#adminTabs a[href="#' + activeTab + '-tab"]').tab('show');
+            if ('<?php echo $role; ?>' === 'admin') {
+                $('#adminTabs a[href="#' + activeTab + '-tab"]').tab('show');
+            } else if ('<?php echo $role; ?>' === 'employee') {
+                $('#employeeTabs a[href="#' + activeTab + '-tab"]').tab('show');
+            }
         });
     </script>
 </body>

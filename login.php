@@ -2,13 +2,13 @@
 session_start();
 include "db.php";
 
-// Додаємо перенаправлення, якщо користувач вже увійшов
+/* Перевірка авторизації */
 if (isset($_SESSION["user_id"])) {
     header("Location: index.php");
     exit();
 }
 
-
+/* Обробка форми входу */
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST["email"]);
     $password = trim($_POST["password"]);
@@ -35,7 +35,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     $stmt->close();
     $conn->close();
-    // Перенаправлення на саму себе, щоб уникнути повторної відправки форми при оновленні
     header("Location: login.php");
     exit();
 }
@@ -65,19 +64,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .form-group {
-            margin-bottom: 1.25rem; /* Збільшено відступ */
+            margin-bottom: 1.25rem;
         }
         .input-group-text {
-             width: 40px; /* Фіксована ширина для іконки */
+             width: 40px;
              justify-content: center;
         }
         .forgot-password {
             text-align: right;
             font-size: 0.9em;
-            margin-bottom: 1.25rem; /* Збільшено відступ */
+            margin-bottom: 1.25rem;
         }
         .btn-block {
-            padding: 10px; /* Збільшено кнопку */
+            padding: 10px;
         }
     </style>
 </head>
@@ -93,7 +92,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                      <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                     </div>
-                    <!-- Додано autocomplete="username" -->
                     <input type="email" name="email" id="email" class="form-control" placeholder="Введіть ваш email" required autocomplete="username">
                 </div>
             </div>
@@ -103,7 +101,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                      <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     </div>
-                    <!-- Додано autocomplete="current-password" -->
                     <input type="password" name="password" id="password" class="form-control" placeholder="Введіть ваш пароль" required autocomplete="current-password">
                  </div>
             </div>

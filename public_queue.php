@@ -1,12 +1,13 @@
 <?php
 session_start();
 include "db.php";
-// Отримання поточної дати
+
+/* Основні налаштування */
 $current_date = date("Y-m-d");
-// Отримання параметрів сортування
-$sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'appointment_date'; // За замовчуванням сортування за датою
-$sort_order = isset($_GET['sort_order']) ? $_GET['sort_order'] : 'desc'; // За замовчуванням спадання
-// Отримання списку активних записів на сьогодні
+$sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'appointment_date';
+$sort_order = isset($_GET['sort_order']) ? $_GET['sort_order'] : 'desc';
+
+/* Отримання даних черги */
 $sql = "SELECT q.ticket_number, s.name as service_name, q.appointment_time, q.status, q.is_called, q.is_confirmed, q.workstation 
         FROM queue q 
         JOIN services s ON q.service_id = s.id 
@@ -30,6 +31,7 @@ if ($result->num_rows > 0) {
     <title>Електронна черга</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
+        /* Основні стилі */
         body {
             background-color: #f8f9fa;
             font-family: Arial, sans-serif;
@@ -37,6 +39,8 @@ if ($result->num_rows > 0) {
         .container {
             margin-top: 20px;
         }
+
+        /* Стилі таблиці */
         .queue-table {
             width: 100%;
             border-collapse: collapse;
@@ -54,6 +58,8 @@ if ($result->num_rows > 0) {
         .queue-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
+
+        /* Стилі статусів */
         .status {
             font-weight: bold;
         }
@@ -76,25 +82,60 @@ if ($result->num_rows > 0) {
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Функція для оновлення черги в реальному часі
-        function updateQueue() {
-            $.ajax({
-                url: "get_public_queue.php",
-                success: function(data) {
-                    $("#queue-table tbody").html(data);
+        $(document).ready(function() {
+            let updateInterval;
+
+            /* Функції оновлення черги */
+            function updateQueue() {
+                $.ajax({
+                    url: "get_public_queue.php",
+                    success: function(data) {
+                        $("#queue-table tbody").html(data);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Помилка оновлення черги:", error);
+                    }
+                });
+            }
+
+            function startUpdates() {
+                updateQueue();
+                updateInterval = setInterval(updateQueue, 2000);
+            }
+
+            function stopUpdates() {
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+            }
+
+            /* Керування оновленнями */
+            startUpdates();
+
+            $(window).on('beforeunload', function() {
+                stopUpdates();
+            });
+
+            $(document).on('visibilitychange', function() {
+                if (document.hidden) {
+                    stopUpdates();
+                } else {
+                    startUpdates();
                 }
             });
-        }
-
-        // Оновлення черги кожні 5 секунд
-        setInterval(updateQueue, 5000);
+        });
     </script>
 </head>
 <body>
+    <!-- Основний контент -->
     <div class="container">
-        <a href="index.php" class="btn btn-primary back-button"><i class="fas fa-arrow-left mr-2"></i>Повернутись на головну сторінку</a>
+        <a href="index.php" class="btn btn-primary back-button">
+            <i class="fas fa-arrow-left mr-2"></i>Повернутись на головну сторінку
+        </a>
         <h1 class="text-center">Електронна черга</h1>
         <h3 class="text-center">Сьогоднішня черга</h3>
+        
+        <!-- Таблиця черги -->
         <table class="queue-table" id="queue-table">
             <thead>
                 <tr>

@@ -2,13 +2,13 @@
 session_start();
 include "db.php";
 
-// Додаємо перенаправлення, якщо користувач вже увійшов
+/* Перевірка авторизації */
 if (isset($_SESSION["user_id"])) {
     header("Location: index.php");
     exit();
 }
 
-// Масив секретних запитань
+/* Список секретних запитань */
 $security_questions = [
     "Ваша перша домашня тварина?",
     "Дівоче прізвище матері?",
@@ -19,7 +19,7 @@ $security_questions = [
     "Марка вашого першого автомобіля?"
 ];
 
-
+/* Обробка форми реєстрації */
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $last_name = trim($_POST["last_name"]);
     $first_name = trim($_POST["first_name"]);
@@ -31,20 +31,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $security_question = trim($_POST["security_question"]);
     $security_answer = trim($_POST["security_answer"]);
 
-    // Валідація форми
+    /* Валідація форми */
     $errors = [];
 
-    // Перевірка ПІБ
+    /* Перевірка ПІБ */
     if (empty($last_name) || empty($first_name) || empty($patronymic)) {
         $errors[] = "Усі поля ПІБ мають бути заповнені";
     }
 
-    // Перевірка email
+    /* Перевірка email */
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Некоректний формат email";
     }
 
-    // Перевірка наявності користувача з таким email
+    /* Перевірка існуючого email */
     $check_stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $check_stmt->bind_param("s", $email);
     $check_stmt->execute();
@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     $check_stmt->close();
 
-    // Перевірка пароля
+    /* Перевірка пароля */
     if (strlen($password) < 8) {
         $errors[] = "Пароль має бути не менше 8 символів";
     }
@@ -71,13 +71,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errors[] = "Пароль має містити хоча б одну цифру";
     }
 
-    // Перевірка підтвердження пароля
+    /* Перевірка підтвердження пароля */
     if ($password !== $confirm_password) {
         $errors[] = "Паролі не співпадають";
     }
 
-    // Перевірка секретного запитання та відповіді
-    if (empty($security_question) || !in_array($security_question, $security_questions)) { // Перевірка чи запитання з нашого списку
+    /* Перевірка секретного запитання */
+    if (empty($security_question) || !in_array($security_question, $security_questions)) {
         $errors[] = "Виберіть коректне секретне запитання";
     }
 
@@ -87,24 +87,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (empty($errors)) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $hashed_answer = password_hash(strtolower($security_answer), PASSWORD_DEFAULT); // Зберігаємо відповідь в нижньому регістрі
-
-        // Перевіряємо наявність колонок для секретного запитання (краще робити при створенні таблиці)
-        // Якщо їх немає, то запит INSERT не спрацює коректно.
-        // Можна закоментувати цей блок, якщо колонки точно існують.
-        /*
-        $check_columns = $conn->query("SHOW COLUMNS FROM users LIKE 'security_question'");
-        if ($check_columns->num_rows == 0) {
-            $conn->query("ALTER TABLE users ADD security_question VARCHAR(255) AFTER password");
-        }
-        $check_columns_answer = $conn->query("SHOW COLUMNS FROM users LIKE 'security_answer'");
-         if ($check_columns_answer->num_rows == 0) {
-            $conn->query("ALTER TABLE users ADD security_answer VARCHAR(255) AFTER security_question");
-        }
-        */
+        $hashed_answer = password_hash(strtolower($security_answer), PASSWORD_DEFAULT);
 
         $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, security_question, security_answer) VALUES (?, ?, ?, ?, ?)");
-        // Припускаємо, що тип колонки password VARCHAR(255), role ENUM або VARCHAR, workstation VARCHAR або TEXT
         $stmt->bind_param("sssss", $full_name, $email, $hashed_password, $security_question, $hashed_answer);
 
         if ($stmt->execute()) {
@@ -112,19 +97,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             header("Location: login.php");
             exit();
         } else {
-            // Більш детальна помилка
             $_SESSION["error"] = "Помилка реєстрації: (" . $stmt->errno . ") " . $stmt->error;
         }
         $stmt->close();
     } else {
         $_SESSION["error"] = implode("<br>", $errors);
-         // Перенаправлення з помилками
         header("Location: register.php");
         exit();
     }
     $conn->close();
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -133,17 +115,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <title>Реєстрація</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {
             background-color: #f8f9fa;
-             display: flex;
+            display: flex;
             justify-content: center;
             align-items: center;
-            padding: 30px 0; /* Додаємо відступи зверху/знизу */
+            padding: 30px 0;
         }
         .register-container {
-            max-width: 600px; /* Збільшено ширину */
+            max-width: 600px;
             width: 100%;
             padding: 30px;
             background-color: #fff;
@@ -151,21 +133,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .form-group {
-            margin-bottom: 1rem; /* Уніфікований відступ */
+            margin-bottom: 1rem;
         }
         .password-requirements {
             font-size: 0.8rem;
             color: #6c757d;
             margin-top: 5px;
-            padding-left: 15px; /* Відступ для списку */
+            padding-left: 15px;
         }
-         .password-requirements ul {
+        .password-requirements ul {
             margin-bottom: 0;
-            padding-left: 1.2em; /* Відступ маркерів списку */
+            padding-left: 1.2em;
         }
-         .input-group-text {
-             width: 40px;
-             justify-content: center;
+        .input-group-text {
+            width: 40px;
+            justify-content: center;
         }
     </style>
 </head>
@@ -194,10 +176,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="form-group">
                 <label for="email">Email:</label>
                 <div class="input-group">
-                     <div class="input-group-prepend">
+                    <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                     </div>
-                    <!-- Додано autocomplete="username" -->
                     <input type="email" name="email" id="email" class="form-control" placeholder="Введіть ваш email" required value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" autocomplete="username">
                 </div>
             </div>
@@ -205,10 +186,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="form-group">
                 <label for="password">Пароль:</label>
                 <div class="input-group">
-                     <div class="input-group-prepend">
+                    <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     </div>
-                    <!-- Додано autocomplete="new-password" -->
                     <input type="password" name="password" id="password" class="form-control" placeholder="Введіть пароль" required autocomplete="new-password">
                 </div>
                 <div class="password-requirements">
@@ -224,19 +204,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class="form-group">
                 <label for="confirm_password">Підтвердження пароля:</label>
-                 <div class="input-group">
-                     <div class="input-group-prepend">
+                <div class="input-group">
+                    <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-check-circle"></i></span>
                     </div>
-                    <!-- Додано autocomplete="new-password" -->
                     <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="Підтвердіть пароль" required autocomplete="new-password">
-                 </div>
+                </div>
             </div>
 
             <div class="form-group">
                 <label for="security_question">Секретне запитання:</label>
-                 <div class="input-group">
-                     <div class="input-group-prepend">
+                <div class="input-group">
+                    <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-question-circle"></i></span>
                     </div>
                     <select name="security_question" id="security_question" class="form-control" required>
@@ -247,18 +226,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                 </div>
+                </div>
                 <small class="form-text text-muted">Це запитання буде використано для відновлення пароля.</small>
             </div>
 
             <div class="form-group">
                 <label for="security_answer">Відповідь на секретне запитання:</label>
-                 <div class="input-group">
-                     <div class="input-group-prepend">
+                <div class="input-group">
+                    <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-user-secret"></i></span>
                     </div>
                     <input type="text" name="security_answer" id="security_answer" class="form-control" placeholder="Введіть відповідь" required value="<?php echo isset($_POST['security_answer']) ? htmlspecialchars($_POST['security_answer']) : ''; ?>">
-                 </div>
+                </div>
                 <small class="form-text text-muted">Запам'ятайте цю відповідь, регістр не важливий.</small>
             </div>
 
@@ -267,7 +246,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <p class="text-center mt-3">Вже маєте акаунт? <a href="login.php">Увійти</a></p>
     </div>
-     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>

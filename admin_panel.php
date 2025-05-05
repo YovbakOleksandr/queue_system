@@ -1,5 +1,5 @@
 <?php
-// Початок сесії та перевірка ролі адміністратора
+/* Перевірка сесії та прав доступу */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,17 +10,19 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != 'admin') {
 
 include_once "db.php";
 
+/* Налаштування перенаправлення */
 $redirect_url = 'index.php';
 $redirect_tab = '';
 $redirect_needed = false;
 
+/* Переклад ролей */
 $role_translation = [
     'admin' => 'Адміністратор',
     'employee' => 'Працівник',
     'user' => 'Користувач'
 ];
 
-// --- Централізована обробка POST запитів ---
+/* Обробка POST запитів */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     $action = $_POST['action'];
 
@@ -34,7 +36,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $wait_time = intval($_POST["wait_time"]);
             $max_wait_time = floor($interval_minutes * 60 * 0.5);
 
-            if ($wait_time < 60) {
+            if (mb_strlen($name) > 50) {
+                $_SESSION["error"] = "Назва послуги не може перевищувати 50 символів!";
+            } elseif ($wait_time < 60) {
                 $_SESSION["error"] = "Час очікування не може бути менше 60 секунд!";
             } elseif ($interval_minutes > 0 && $wait_time > $max_wait_time) {
                 $_SESSION["error"] = "Час очікування ($wait_time сек) не може перевищувати 50% часу обслуговування ($max_wait_time сек)!";
@@ -58,7 +62,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $wait_time = intval($_POST["edit_wait_time"]);
             $max_wait_time = floor($interval_minutes * 60 * 0.5);
 
-            if ($wait_time < 60) {
+            if (mb_strlen($name) > 50) {
+                $_SESSION["error"] = "Назва послуги не може перевищувати 50 символів!";
+            } elseif ($wait_time < 60) {
                 $_SESSION["error"] = "Час очікування не може бути менше 60 секунд!";
             } elseif ($interval_minutes > 0 && $wait_time > $max_wait_time) {
                  $_SESSION["error"] = "Час очікування ($wait_time сек) не може перевищувати 50% часу обслуговування ($max_wait_time сек)!";
@@ -121,7 +127,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
                 if (!empty($new_password)) {
                      $password_errors = [];
                      if (strlen($new_password) < 8) $password_errors[] = "Мін 8 симв.";
-                     // Add more password validation if needed
                      if (!empty($password_errors)) {
                         $_SESSION["error"] = "Новий пароль: " . implode(", ", $password_errors);
                         $can_proceed = false;
@@ -184,10 +189,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     $redirect_needed = true;
 }
 
-// --- Централізована обробка GET запитів (видалення) ---
+/* Обробка GET запитів */
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action'])) {
     $action = $_GET['action'];
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0; // ID об'єкта для видалення
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
     switch ($action) {
         case 'delete_service':
@@ -253,8 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['action'])) {
     $redirect_needed = true;
 }
 
-
-// --- Отримання даних для відображення ---
+/* Отримання даних для відображення */
 $services = $conn->query("SELECT * FROM services ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 $users = $conn->query("SELECT * FROM users ORDER BY full_name ASC, email ASC, role ASC")->fetch_all(MYSQLI_ASSOC);
 $employees = $conn->query("SELECT id, full_name, workstation FROM users WHERE role = 'employee' ORDER BY full_name")->fetch_all(MYSQLI_ASSOC);
@@ -278,7 +282,7 @@ if ($result_assignments) {
      $_SESSION["error"] = ($_SESSION["error"] ?? "") . "<br>Помилка запиту призначень: " . $conn->error;
 }
 
-// --- Виконання перенаправлення ---
+/* Виконання перенаправлення */
 if ($redirect_needed) {
     $redirect_url .= "?tab=" . $redirect_tab . "&t=" . time();
     echo "<script>window.location.replace('{$redirect_url}');</script>";
@@ -347,7 +351,7 @@ if ($redirect_needed) {
                                 <input type="hidden" name="action" value="add_service">
                                 <div class="form-group">
                                     <label for="name">Назва:</label>
-                                    <input type="text" name="name" id="name" class="form-control" required>
+                                    <input type="text" name="name" id="name" class="form-control" required maxlength="50">
                                 </div>
                                 <div class="form-group">
                                     <label for="description">Опис:</label>
@@ -544,7 +548,7 @@ if ($redirect_needed) {
                 <div class="modal-header"><h5 class="modal-title" id="editServiceModalLabel">Редагувати</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
                 <div class="modal-body">
                     <input type="hidden" name="edit_service_id" id="edit_service_id">
-                    <div class="form-group"><label for="edit_name">Назва:</label><input type="text" name="edit_name" id="edit_name" class="form-control" required></div>
+                    <div class="form-group"><label for="edit_name">Назва:</label><input type="text" name="edit_name" id="edit_name" class="form-control" required maxlength="50"></div>
                     <div class="form-group"><label for="edit_description">Опис:</label><textarea name="edit_description" id="edit_description" class="form-control" rows="2"></textarea></div>
                     <div class="form-row">
                         <div class="form-group col-md-6"><label for="edit_interval_minutes">Трив. (хв):</label><input type="number" name="edit_interval_minutes" id="edit_interval_minutes" class="form-control" min="5" required></div>

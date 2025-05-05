@@ -1,11 +1,12 @@
 <?php
+/* Перевірка сесії та підключення до БД */
 session_start();
 include "db.php";
 
-// Отримання поточної дати
+/* Отримання поточної дати */
 $current_date = date("Y-m-d");
 
-// Отримання списку активних записів на сьогодні
+/* Отримання списку активних записів */
 $sql = "SELECT q.ticket_number, s.name as service_name, q.appointment_time, q.status, q.is_called, q.is_confirmed, q.workstation 
         FROM queue q 
         JOIN services s ON q.service_id = s.id 
@@ -14,6 +15,7 @@ $sql = "SELECT q.ticket_number, s.name as service_name, q.appointment_time, q.st
         ORDER BY q.appointment_time";
 $result = $conn->query($sql);
 
+/* Формування HTML для записів */
 if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         echo "<tr>

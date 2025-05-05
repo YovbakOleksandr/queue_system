@@ -1,4 +1,5 @@
 <?php
+/* Перевірка сесії та прав доступу */
 session_start();
 if (!isset($_SESSION["user_id"])) {
     header("Location: login.php");
@@ -7,7 +8,7 @@ if (!isset($_SESSION["user_id"])) {
 
 include "db.php";
 
-// Отримання доступних послуг
+/* Отримання доступних послуг */
 $services = [];
 $sql = "SELECT id, name, description FROM services";
 $result = $conn->query($sql);
@@ -78,7 +79,6 @@ if ($result->num_rows > 0) {
             </div>
         </div>
 
-        <!-- Блок для таймера -->
         <div id="timer-container" class="mt-4">
             <div id="notification" class="notification"></div>
         </div>
@@ -135,117 +135,117 @@ if ($result->num_rows > 0) {
     </style>
 
     <script>
-    // Глобальні змінні для часу виклику та часу очікування
-    let calledTime = null;
-    let waitTime = null;
-    let calledTicket = null;
+        /* Глобальні змінні для часу */
+        let calledTime = null;
+        let waitTime = null;
+        let calledTicket = null;
 
-    function updateTimers() {
-        // Оновлюємо тільки таймер у повідомленні про виклик
-        if (calledTime && waitTime && calledTicket) {
-            const currentTime = Math.floor(Date.now() / 1000);
-            const remaining = waitTime - (currentTime - calledTime);
-            
-            if (remaining > 0) {
-                const minutes = Math.floor(remaining / 60);
-                const seconds = remaining % 60;
-                $('#notification .timer').text(`Час очікування: ${minutes}:${seconds.toString().padStart(2, '0')}`);
-            } else {
-                $('#notification .timer').text('Час вийшов!');
-                localStorage.removeItem('calledTime');
-                localStorage.removeItem('waitTime');
-                localStorage.removeItem('calledTicket');
-                calledTime = null;
-                waitTime = null;
-                calledTicket = null;
-                $('#notification').removeClass('show').addClass('hide');
+        /* Оновлення таймерів */
+        function updateTimers() {
+            if (calledTime && waitTime && calledTicket) {
+                const currentTime = Math.floor(Date.now() / 1000);
+                const remaining = waitTime - (currentTime - calledTime);
+                
+                if (remaining > 0) {
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    $('#notification .timer').text(`Час очікування: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+                } else {
+                    $('#notification .timer').text('Час вийшов!');
+                    localStorage.removeItem('calledTime');
+                    localStorage.removeItem('waitTime');
+                    localStorage.removeItem('calledTicket');
+                    calledTime = null;
+                    waitTime = null;
+                    calledTicket = null;
+                    $('#notification').removeClass('show').addClass('hide');
+                }
             }
         }
-    }
 
-    function checkCalled() {
-        $.ajax({
-            url: 'check_called.php',
-            dataType: 'json',
-            success: function(data) {
-                if (data.is_called) {
-                    calledTime = data.called_at;
-                    waitTime = data.wait_time;
-                    calledTicket = data.ticket_number;
-                    localStorage.setItem('calledTime', calledTime);
-                    localStorage.setItem('waitTime', waitTime);
-                    localStorage.setItem('calledTicket', calledTicket);
-                    localStorage.setItem('workstation', data.workstation);
-                    
+        /* Перевірка виклику */
+        function checkCalled() {
+            $.ajax({
+                url: 'check_called.php',
+                dataType: 'json',
+                success: function(data) {
+                    if (data.is_called) {
+                        calledTime = data.called_at;
+                        waitTime = data.wait_time;
+                        calledTicket = data.ticket_number;
+                        localStorage.setItem('calledTime', calledTime);
+                        localStorage.setItem('waitTime', waitTime);
+                        localStorage.setItem('calledTicket', calledTicket);
+                        localStorage.setItem('workstation', data.workstation);
+                        
+                        const message = `
+                            <i class="fas fa-bell mr-2"></i>Вас викликано! 
+                            <br>Номер талону: <strong>${data.ticket_number}</strong>
+                            <br>Робоче місце: <strong>${data.workstation}</strong>
+                            <br><span class="timer"></span>
+                        `;
+                        $('#notification').html(message).removeClass('hide').addClass('show');
+                    } else {
+                        calledTime = null;
+                        waitTime = null;
+                        calledTicket = null;
+                        localStorage.removeItem('calledTime');
+                        localStorage.removeItem('waitTime');
+                        localStorage.removeItem('calledTicket');
+                        localStorage.removeItem('workstation');
+                        $('#notification').removeClass('show').addClass('hide');
+                    }
+                    updateTimers();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Помилка перевірки виклику:', error);
+                }
+            });
+        }
+
+        /* Ініціалізація при завантаженні */
+        $(document).ready(function() {
+            const storedTime = localStorage.getItem('calledTime');
+            const storedWait = localStorage.getItem('waitTime');
+            const storedTicket = localStorage.getItem('calledTicket');
+            
+            if (storedTime && storedWait && storedTicket) {
+                calledTime = parseInt(storedTime);
+                waitTime = parseInt(storedWait);
+                calledTicket = storedTicket;
+                
+                const currentTime = Math.floor(Date.now() / 1000);
+                const remaining = waitTime - (currentTime - calledTime);
+                
+                if (remaining > 0) {
                     const message = `
                         <i class="fas fa-bell mr-2"></i>Вас викликано! 
-                        <br>Номер талону: <strong>${data.ticket_number}</strong>
-                        <br>Робоче місце: <strong>${data.workstation}</strong>
+                        <br>Номер талону: <strong>${calledTicket}</strong>
+                        <br>Робоче місце: <strong>${localStorage.getItem('workstation') || 'Не вказано'}</strong>
                         <br><span class="timer"></span>
                     `;
                     $('#notification').html(message).removeClass('hide').addClass('show');
                 } else {
-                    calledTime = null;
-                    waitTime = null;
-                    calledTicket = null;
                     localStorage.removeItem('calledTime');
                     localStorage.removeItem('waitTime');
                     localStorage.removeItem('calledTicket');
                     localStorage.removeItem('workstation');
-                    $('#notification').removeClass('show').addClass('hide');
+                    calledTime = null;
+                    waitTime = null;
+                    calledTicket = null;
                 }
-                updateTimers();
-            },
-            error: function(xhr, status, error) {
-                console.error('Помилка перевірки виклику:', error);
             }
-        });
-    }
-
-    $(document).ready(function() {
-        const storedTime = localStorage.getItem('calledTime');
-        const storedWait = localStorage.getItem('waitTime');
-        const storedTicket = localStorage.getItem('calledTicket');
-        
-        if (storedTime && storedWait && storedTicket) {
-            calledTime = parseInt(storedTime);
-            waitTime = parseInt(storedWait);
-            calledTicket = storedTicket;
             
-            // Перевіряємо, чи не минув час очікування 
-            const currentTime = Math.floor(Date.now() / 1000);
-            const remaining = waitTime - (currentTime - calledTime);
-            
-            if (remaining > 0) {
-                const message = `
-                    <i class="fas fa-bell mr-2"></i>Вас викликано! 
-                    <br>Номер талону: <strong>${calledTicket}</strong>
-                    <br>Робоче місце: <strong>${localStorage.getItem('workstation') || 'Не вказано'}</strong>
-                    <br><span class="timer"></span>
-                `;
-                $('#notification').html(message).removeClass('hide').addClass('show');
-            } else {
-                // Якщо час вийшов, видаляємо інформацію про виклик
-                localStorage.removeItem('calledTime');
-                localStorage.removeItem('waitTime');
-                localStorage.removeItem('calledTicket');
-                localStorage.removeItem('workstation');
-                calledTime = null;
-                waitTime = null;
-                calledTicket = null;
-            }
-        }
-        
-        // Запускаємо оновлення таймерів
-        setInterval(updateTimers, 1000);
-        setInterval(checkCalled, 5000);
-    });
-    
-    setInterval(function() {
-        $.get('get_user_queue.php', function(data) {
-            $('#user-queue').html(data);
+            setInterval(updateTimers, 1000);
+            setInterval(checkCalled, 5000);
         });
-    }, 5000);
+        
+        /* Оновлення черги */
+        setInterval(function() {
+            $.get('get_user_queue.php', function(data) {
+                $('#user-queue').html(data);
+            });
+        }, 5000);
     </script>
 </body>
 </html>
