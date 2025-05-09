@@ -2,6 +2,13 @@
 session_start();
 include "db.php";
 
+/* Автоматичне скасування старих записів */
+$today = date("Y-m-d");
+$stmt = $conn->prepare("UPDATE queue SET status = 'cancelled' WHERE appointment_date < ? AND status = 'pending'");
+$stmt->bind_param("s", $today);
+$stmt->execute();
+$stmt->close();
+
 /* Основні налаштування */
 $current_date = date("Y-m-d");
 $sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'appointment_date';

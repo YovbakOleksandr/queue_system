@@ -6,6 +6,14 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 include "db.php";
+
+/* Автоматичне скасування старих записів */
+$today = date("Y-m-d");
+$stmt = $conn->prepare("UPDATE queue SET status = 'cancelled' WHERE appointment_date < ? AND status = 'pending'");
+$stmt->bind_param("s", $today);
+$stmt->execute();
+$stmt->close();
+
 $role = $_SESSION["role"];
 date_default_timezone_set('Europe/Kyiv');
 $current_date = date("d.m.Y");

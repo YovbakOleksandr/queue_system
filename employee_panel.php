@@ -7,13 +7,7 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] != 'employee') {
 
 include "db.php";
 
-// Додавання колонки called_by_employee_id, якщо її ще немає
-$check_column = $conn->query("SHOW COLUMNS FROM queue LIKE 'called_by_employee_id'");
-if ($check_column->num_rows == 0) {
-    $conn->query("ALTER TABLE queue ADD COLUMN called_by_employee_id INT NULL AFTER workstation");
-}
-
-// Обробка POST-запиту для оновлення робочої станції
+/* Обробка POST-запиту для оновлення робочої станції */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_workstation"])) {
     $workstation = trim($_POST["workstation"]);
     $stmt = $conn->prepare("UPDATE users SET workstation = ? WHERE id = ?");
@@ -24,16 +18,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_workstation"]))
     $_SESSION["success"] = "Робочу станцію оновлено!";
 }
 
-// Обробка POST-запиту для зміни фільтра послуг
+/* Обробка POST-запиту для зміни фільтра послуг */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_filter"])) {
     $selected_services = $_POST["services"] ?? [];
     $_SESSION["selected_services"] = $selected_services;
     $_SESSION["success"] = "Фільтр послуг оновлено!";
 }
 
-// Обробка POST-запиту для виклику наступного клієнта
+/* Обробка POST-запиту для виклику наступного клієнта */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["call_next"])) {
-    // Перевірка, чи це не автоматичний виклик при завантаженні сторінки
+    /* Перевірка, чи це не автоматичний виклик при завантаженні сторінки */
     if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
         $current_date = date("Y-m-d");
         $selected_services = $_SESSION["selected_services"] ?? [];
@@ -77,7 +71,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["call_next"])) {
     }
 }
 
-// Обробка POST-запиту для оновлення налаштування автоматичного виклику
+/* Обробка POST-запиту для оновлення налаштування автоматичного виклику */
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_auto_call"])) {
     $_SESSION["auto_call_next"] = isset($_POST["auto_call_next"]) ? true : false;
     $_SESSION["success"] = "Налаштування оновлено!";
@@ -86,7 +80,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_auto_call"])) {
     exit();
 }
 
-// Отримання списку послуг, які працівник може обробляти
+/* Отримання списку послуг, які працівник може обробляти */
 $employee_id = $_SESSION["user_id"];
 $services = [];
 $sql = "SELECT es.id, s.id as service_id, s.name, es.is_active 
@@ -100,7 +94,7 @@ if ($result->num_rows > 0) {
     }
 }
 
-// Отримання поточної робочої станції працівника
+/* Отримання поточної робочої станції працівника */
 $stmt = $conn->prepare("SELECT workstation FROM users WHERE id = ?");
 $stmt->bind_param("i", $_SESSION["user_id"]);
 $stmt->execute();
@@ -110,7 +104,7 @@ if ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Отримання поточної черги для вибраних послуг
+/* Отримання поточної черги для вибраних послуг */
 $selected_date = isset($_GET["selected_date"]) ? $_GET["selected_date"] : date("Y-m-d");
 $selected_services = $_SESSION["selected_services"] ?? [];
 $queue = [];
@@ -393,7 +387,7 @@ if (!empty($selected_services)) {
 </div>
 
 <script>
-    // Оновлення таймера
+    /* Оновлення таймера */
     function updateTimers() {
         $('.timer').each(function() {
             const calledTime = parseInt($(this).data('called'));
@@ -401,7 +395,7 @@ if (!empty($selected_services)) {
             const ticket = $(this).data('ticket');
             const currentTime = Math.floor(Date.now() / 1000);
 
-            // Додатковий захист: якщо called_at або wait_time некоректні, не запускати таймер
+            /* Додатковий захист: якщо called_at або wait_time некоректні, не запускати таймер */
             if (!calledTime || !waitTime || isNaN(calledTime) || isNaN(waitTime) || waitTime < 10) {
                 $(this).html('<i class="fas fa-exclamation-triangle mr-1"></i>Таймер не налаштовано');
                 return;
@@ -415,19 +409,19 @@ if (!empty($selected_services)) {
                 $(this).html(`<i class=\"fas fa-hourglass-half mr-1\"></i>Час очікування: ${minutes}:${seconds.toString().padStart(2, '0')}`);
             } else {
                 $(this).html('<i class="fas fa-exclamation-triangle mr-1"></i>Час вийшов!');
-                // НЕ викликаємо cancel автоматично!
-                // Скасування лише вручну через кнопку
+                /* НЕ викликаємо cancel автоматично!
+                Скасування лише вручну через кнопку */
             }
         });
     }
 
-    // Оновлення черги при зміні дати
+    /* Оновлення черги при зміні дати */
     $('#selected_date').change(function() {
         const selectedDate = $(this).val();
         window.location.href = `index.php?selected_date=${selectedDate}`;
     });
 
-    // Оновлення черги
+    /* Оновлення черги */
     function updateQueue() {
         const selectedDate = $('#selected_date').val();
         $.ajax({
@@ -440,7 +434,7 @@ if (!empty($selected_services)) {
         });
     }
 
-    // Виклик наступного клієнта через AJAX, без reload
+    /* Виклик наступного клієнта через AJAX, без reload */
     $(document).on('submit', '#call-next-form', function(e) {
         e.preventDefault();
         callNextClient();
@@ -455,13 +449,13 @@ if (!empty($selected_services)) {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(response) {
-                updateQueue(); // Оновлюємо чергу після виклику
+                updateQueue(); 
                 $('.alert-success').remove();
             }
         });
     }
 
-    // Обробка кнопок
+    /* Обробка кнопок */
     $(document).on('click', '.confirm-btn', function() {
         const ticket = $(this).data('ticket');
         $.ajax({
@@ -496,7 +490,7 @@ if (!empty($selected_services)) {
             },
             success: function(response) {
                 updateQueue();
-                // Перевіряємо, чи увімкнено автоматичний виклик
+                /* Перевіряємо, чи увімкнено автоматичний виклик */
                 if ("<?php echo isset($_SESSION['auto_call_next']) && $_SESSION['auto_call_next'] ? 'true' : 'false'; ?>" === 'true') {
                     callNextClient();
                 }
@@ -525,7 +519,7 @@ if (!empty($selected_services)) {
         }
     });
 
-    // Запуск оновлення
+    /* Запуск оновлення */
     setInterval(updateQueue, 5000);
     updateTimers();
     setInterval(updateTimers, 1000);

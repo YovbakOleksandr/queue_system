@@ -13,5 +13,4 @@ $conn = new mysqli($host, $user, $password, $database, $port);
 if ($conn->connect_error) {
     die("Помилка підключення: " . $conn->connect_error);
 }
-
 ?>

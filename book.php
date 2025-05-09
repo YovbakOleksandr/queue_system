@@ -10,9 +10,9 @@ include "db.php";
 
 /* Автоматичне скасування старих записів */
 function cancelPastAppointments($conn) {
-    $yesterday = date("Y-m-d", strtotime("-1 day"));
-    $stmt = $conn->prepare("UPDATE queue SET status = 'canceled' WHERE appointment_date < ? AND status = 'pending'");
-    $stmt->bind_param("s", $yesterday);
+    $today = date("Y-m-d");
+    $stmt = $conn->prepare("UPDATE queue SET status = 'cancelled' WHERE appointment_date < ? AND status = 'pending'");
+    $stmt->bind_param("s", $today);
     $stmt->execute();
     $stmt->close();
 }
@@ -116,7 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $stmt_insert->bind_param("iisss", $user_id, $service_id, $appointment_date, $appointment_time, $ticket_number);
 
                         if ($stmt_insert->execute()) {
-                            $success_message = "Ви успішно записалися на послугу \"{$service['name']}\". <br>Дата: $appointment_date <br>Час: $appointment_time <br>Номер вашого талону: <strong>$ticket_number</strong>.";
+                            $success_message = "Шановний(а) {$_SESSION['full_name']}, Ви успішно записалися на послугу \"{$service['name']}\". <br>Дата: $appointment_date <br>Час: $appointment_time <br>Номер вашого талону: <strong>$ticket_number</strong>.<br><small class='text-muted'>Рекомендуємо з'явитися за 15 хвилин до призначеного часу.</small>";
                             echo "<script>localStorage.removeItem('selectedDate'); localStorage.removeItem('selectedTime');</script>";
                         } else {
                             error_log("DB Error: " . $stmt_insert->error);
